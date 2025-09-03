@@ -1,0 +1,169 @@
+P1.y: warning: 1 nonterminal useless in grammar [-Wother]
+P1.y: warning: 1 rule useless in grammar [-Wother]
+P1.y:179.1-7: warning: nonterminal useless in grammar: Integer [-Wother]
+  179 | Integer
+      | ^~~~~~~
+P1.y: warning: 11 shift/reduce conflicts [-Wconflicts-sr]
+P1.y: warning: shift/reduce conflict on token '[' [-Wcounterexamples]
+  Example: '!' PostfixExpr • '[' Expression ']'
+  Shift derivation
+    PostfixExpr
+    ↳ 45: PrimaryExpr
+          ↳ 58: '!' Expression
+                    ↳ 44: PostfixExpr
+                          ↳ 46: PostfixExpr • '[' Expression ']'
+  Reduce derivation
+    PostfixExpr
+    ↳ 46: PostfixExpr                         '[' Expression ']'
+          ↳ 45: PrimaryExpr
+                ↳ 58: '!' Expression
+                          ↳ 44: PostfixExpr •
+P1.y: warning: shift/reduce conflict on token '.' [-Wcounterexamples]
+  Example: '!' PostfixExpr • '.' LENGTH
+  Shift derivation
+    PostfixExpr
+    ↳ 45: PrimaryExpr
+          ↳ 58: '!' Expression
+                    ↳ 44: PostfixExpr
+                          ↳ 47: PostfixExpr • '.' LENGTH
+  Reduce derivation
+    PostfixExpr
+    ↳ 47: PostfixExpr                         '.' LENGTH
+          ↳ 45: PrimaryExpr
+                ↳ 58: '!' Expression
+                          ↳ 44: PostfixExpr •
+P1.y: warning: shift/reduce conflict on token '.' [-Wcounterexamples]
+  Example: '!' PostfixExpr • '.' IDENTIFIER '(' ')'
+  Shift derivation
+    PostfixExpr
+    ↳ 45: PrimaryExpr
+          ↳ 58: '!' Expression
+                    ↳ 44: PostfixExpr
+                          ↳ 48: PostfixExpr • '.' IDENTIFIER '(' OptExprs ')'
+                                                                 ↳ 48: ε
+  Reduce derivation
+    PostfixExpr
+    ↳ 48: PostfixExpr                         '.' IDENTIFIER '(' OptExprs ')'
+          ↳ 45: PrimaryExpr                                      ↳ 48: ε
+                ↳ 58: '!' Expression
+                          ↳ 44: PostfixExpr •
+P1.y: warning: shift/reduce conflict on token ')' [-Wcounterexamples]
+  First example: MacroDefinitions DEFINE Identifier '(' OptIdList ')' '(' '(' IDENTIFIER • ')' '-' '>' Expression ')' MainClass TypeDeclarations $end
+  Shift derivation
+    $accept
+    ↳ 0: Goal                                                                                                                                                        $end
+         ↳ 1: MacroDefinitions                                                                                                            MainClass TypeDeclarations
+              ↳ 3: MacroDefinitions MacroDefExpression
+                                    ↳ 63: DEFINE Identifier '(' OptIdList ')' '(' Expression                                          ')'
+                                                                                  ↳ 44: PostfixExpr
+                                                                                        ↳ 50: '(' IDENTIFIER • ')' '-' '>' Expression
+  Second example: MacroDefinitions DEFINE Identifier '(' OptIdList ')' '(' '(' IDENTIFIER • ')' ')' MainClass TypeDeclarations $end
+  Reduce derivation
+    $accept
+    ↳ 0: Goal                                                                                                                                                                   $end
+         ↳ 1: MacroDefinitions                                                                                                                       MainClass TypeDeclarations
+              ↳ 3: MacroDefinitions MacroDefinition
+                                    ↳ 61: MacroDefExpression
+                                          ↳ 63: DEFINE Identifier '(' OptIdList ')' '(' Expression                                               ')'
+                                                                                        ↳ 44: PostfixExpr
+                                                                                              ↳ 45: PrimaryExpr
+                                                                                                    ↳ 59: '(' Expression                     ')'
+                                                                                                              ↳ 44: PostfixExpr
+                                                                                                                    ↳ 45: PrimaryExpr
+                                                                                                                          ↳ 54: IDENTIFIER •
+P1.y: warning: shift/reduce conflict on token AND [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • AND Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 36: Expression • AND Expression
+  Reduce derivation
+    Expression
+    ↳ 36: Expression                                          AND Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
+P1.y: warning: shift/reduce conflict on token OR [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • OR Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 37: Expression • OR Expression
+  Reduce derivation
+    Expression
+    ↳ 37: Expression                                          OR Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
+P1.y: warning: shift/reduce conflict on token NEQ [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • NEQ Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 38: Expression • NEQ Expression
+  Reduce derivation
+    Expression
+    ↳ 38: Expression                                          NEQ Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
+P1.y: warning: shift/reduce conflict on token LEQ [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • LEQ Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 39: Expression • LEQ Expression
+  Reduce derivation
+    Expression
+    ↳ 39: Expression                                          LEQ Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
+P1.y: warning: shift/reduce conflict on token '+' [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • '+' Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 40: Expression • '+' Expression
+  Reduce derivation
+    Expression
+    ↳ 40: Expression                                          '+' Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
+P1.y: warning: shift/reduce conflict on token '-' [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • '-' Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 41: Expression • '-' Expression
+  Reduce derivation
+    Expression
+    ↳ 41: Expression                                          '-' Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
+P1.y: warning: shift/reduce conflict on token '*' [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • '*' Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 42: Expression • '*' Expression
+  Reduce derivation
+    Expression
+    ↳ 42: Expression                                          '*' Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
+P1.y: warning: shift/reduce conflict on token '/' [-Wcounterexamples]
+  Example: '(' IDENTIFIER ')' '-' '>' Expression • '/' Expression
+  Shift derivation
+    Expression
+    ↳ 44: PostfixExpr
+          ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression
+                                           ↳ 43: Expression • '/' Expression
+  Reduce derivation
+    Expression
+    ↳ 43: Expression                                          '/' Expression
+          ↳ 44: PostfixExpr
+                ↳ 50: '(' IDENTIFIER ')' '-' '>' Expression •
