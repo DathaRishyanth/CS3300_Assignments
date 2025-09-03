@@ -39,37 +39,45 @@
 
 
 "System.out.println"    { return PRINT; }
-
-"("                  { return LEFTPAR; }
-")"                  { return RIGHTPAR; }
-"{"                  { return CURLYOPEN; }
-"}"                  { return CURLYCLOSE; }
-"["                  { return SQUAREOPEN; }
-"]"                  { return SQUARECLOSE; }
-";"                  { return SEMICOLON; }
-"+"                  { return PLUS; }
-"-"                  { return MINUS; }
-"*"                  { return MULTIPLY; }
-"/"                  { return DIVIDE; }
-"="                  { return ASSIGN; }
-"=="                 { return EQUAL; }
-"!="                 { return NOTEQUAL; }
-"<"                  { return LESSTHAN; }
-">"                  { return GREATERTHAN; }
-"<="                 { return LESSEQUAL; }
-
-"->"                 { return ARROW; }
-"&&"                 { return ANDAND; }
-"&"                  { return AND; }
-"|"                  { return OR; }  
-"||"                 { return OROR; }
-"!"                  { return NOT; }
-"."                  { return DOT; }
-","                  { return COMMA; }
+"apply"                { return APPLY; }
+"import"                { return IMPORT; }
+"java"                 { return JAVA; }
+"util"                 { return UTIL; }
+"function"            { return FUNCTION; }
 
 
-[0-9]+                  { yylval.val = atoi(yytext); return INTEGER_LITERAL; }
-[a-zA-Z_][a-zA-Z0-9_]*   { yylval.str = strdup(yytext); return IDENTIFIER; }
+"->"                    { return ARROW; }
+"("                     { return '('; }
+")"                     { return ')'; }
+"{"                     { return '{'; }
+"}"                     { return '}'; }
+"["                     { return '['; }
+"]"                     { return ']'; }
+";"                     { return ';'; }
+"."                     { return '.'; }
+","                     { return ','; }
+"="                     { return '='; }
+"!"                     { return '!'; }
+"<"                     { return '<'; }
+"+"                     { return '+'; }
+"-"                     { return '-'; }
+"*"                     { return '*'; }
+"&&"                    { return AND; }
+"||"                    { return OR; }
+"=="                    { return EQ; }
+"!="                    { return NEQ; }
+"<="                    { return LEQ; }
+
+
+
+
+
+
+
+
+
+[0-9]+                  { yylval.val = strdup(yytext); return INTEGER_LITERAL; }
+[a-zA-Z_][a-zA-Z0-9_]*   { yylval.val = strdup(yytext); return IDENTIFIER; }
 
 [ \t\r\n]+               { /* ignore whitespace */ }
 .                   { /* ignore any other character */ }
