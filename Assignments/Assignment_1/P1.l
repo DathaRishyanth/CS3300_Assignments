@@ -8,8 +8,8 @@
 
 %%
 
-"//".*                { /* ignore single-line comments */ }
-"/*"([^*]|\*[^/])*"*/"    { /* ignore multi-line comments */ }
+"//".*                { yylval.val = strdup(yytext); return COMMENT; }
+"/*"([^*]|\*[^/])*"*/"    { yylval.val = strdup(yytext); return COMMENT; }
 
 
 "class"                 { return CLASS; }

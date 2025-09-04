@@ -59,6 +59,19 @@ static string substituteParams(const string& body,
     return res;
 }
 
+
+static string reindentTo(const string& s, int level){
+    string ind = indentation(level);
+    string out;
+    bool atLineStart = true;
+    for(char c : s){
+        if(atLineStart) out += ind;
+        out += c;
+        atLineStart = (c == '\n');
+    }
+    return out;
+}
+
 static string expandMacroCallCommon(const char* nameC, const char* argsStrC, bool expectExpression){
     string name = nameC ? nameC : "";
     string argsStr = argsStrC ? argsStrC : "";
@@ -87,6 +100,8 @@ void yyerror(const char *s){
 int yylex(void);
 %}
 
+%start Goal
+
 
 %union {
    char* val;
@@ -97,7 +112,7 @@ int yylex(void);
 %token IF ELSE WHILE DO
 %token TRUE_ FALSE_ THIS LENGTH
 
-%type<val> Expression MatchedStatement Type ExprList ExpressionRests ExpressionRest
+%type<val> Expression MatchedStatement Type ExprList ExpressionRests ExpressionRest Comment
 %type<val>  TypeDeclarations TypeDeclaration VarDecls VarDecl
 %type<val> Statements Statement UnmatchedStatement Block ClassType
 %type<val> OptExprs OptParams ParamList ParamRests
@@ -124,9 +139,11 @@ int yylex(void);
 %token UMINUS
 %left '.' '[' ']'
 
-%token <val> IDENTIFIER INTEGER_LITERAL
+%token <val> IDENTIFIER INTEGER_LITERAL COMMENT
 
 %%
+
+
 
 Goal
     : ImportFunctionOpt MacroDefinitions MainClass TypeDeclarations
@@ -153,11 +170,19 @@ MacroDefinitions :
     {
         $$ = strdup((string($1) + string($2)).c_str());
     }
+    | Comment MacroDefinitions
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
     |{ $$ = strdup(""); }
     ;
 
 TypeDeclarations :
     TypeDeclaration TypeDeclarations
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
+    | Comment TypeDeclarations
     {
         $$ = strdup((string($1) + string($2)).c_str());
     }
@@ -211,6 +236,10 @@ VarDecls :
     {
         $$ = strdup((string($1) + string($2)).c_str());
     }
+    | Comment VarDecls
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
     |{$$ = strdup("");}
     ;
 
@@ -237,6 +266,10 @@ FunctionDecl :
 
 MethodDeclarations :
     MethodDeclaration MethodDeclarations
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
+    | Comment MethodDeclarations
     {
         $$ = strdup((string($1) + string($2)).c_str());
     }
@@ -308,6 +341,10 @@ Statements  :
     {
         $$ = strdup((string($1) + string($2)).c_str());
     }
+    | Comment Statements
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
     |{ $$ = strdup(""); }
     ;
 
@@ -337,7 +374,19 @@ MatchedStatement
         string s = indentation(indent) + "System.out.println(" + string($3) + ");\n";
         $$ = strdup(s.c_str());
     }
-    | Block{ $$ = $1; }
+    
+    | IDENTIFIER '(' OptExprs ')' ';'
+    {
+        try {
+            string expanded = expandMacroCallCommon($1, $3, false);
+            string s = reindentTo(expanded, indent);
+            $$ = strdup(s.c_str());
+        } catch (const runtime_error& e) {
+            yyerror(e.what());
+            YYERROR;
+        }
+    }
+| Block{ $$ = $1; }
     | IDENTIFIER '=' Expression ';'
     {
         string s = indentation(indent) + string($1) + " = " + string($3) + ";\n";
@@ -362,7 +411,7 @@ Block :
     ;
 
 UnmatchedStatement
-    : IF '(' Expression ')'{indent++;} Statement{indent--;} %prec IFX
+    : IF '(' Expression ')'{indent++;} Block{indent--;} 
     {
         string s = indentation(indent) + "if (" + string($3) + ")\n";
         s += string($6);
@@ -530,6 +579,15 @@ IdRest :
     {
         $$ = strdup((string(", ") + string($2)).c_str());
     }
+    ;
+
+Comment :
+    COMMENT
+    {
+        string s = string($1) + "\n";
+        $$ = strdup(s.c_str());
+    }
+    | { $$ = strdup(""); }
     ;
 
 %%
