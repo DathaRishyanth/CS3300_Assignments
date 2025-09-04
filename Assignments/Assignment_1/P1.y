@@ -1,22 +1,21 @@
 %{
-#include <iostream>
-#include <string>
-#include <vector>
-#include <map>
-#include <cstring> // For strdup
-#include <cstdlib> // For free
-
+#include <bits/stdc++.h>
+#include <regex>
+#include <stdexcept>
+#include <sstream>
 using namespace std;
-void yyerror(const char *s);
-int yylex(void);
 
-// Define the Macro class
 struct Macro {
-    bool isExpression;               // true for expression macros
-    vector<string> params; // parameter names
-    string body;                // the macro body as text
+    bool isExpression;
+    vector<string> params;
+    string body;
 };
 map<string, Macro> macroTable;
+int indent = 0;
+string indentation(int level) {
+    return string(level * 4, ' ');
+}
+
 static inline string trim(const string& s){
     size_t i=0, j=s.size();
     while(i<j && isspace((unsigned char)s[i])) ++i;
@@ -24,60 +23,76 @@ static inline string trim(const string& s){
     return s.substr(i, j-i);
 }
 
-static vector<string> parseArgs(const string& s) {
-    vector<string> out;
-    string cur;
-    int depth = 0;
-    for (size_t i = 0; i < s.size(); ++i) {
-        char c = s[i];
-        if (c == '(' || c == '[' || c == '{') { depth++; cur.push_back(c); }
-        else if (c == ')' || c == ']' || c == '}') { depth--; cur.push_back(c); }
-        else if (c == ',' && depth == 0) { out.push_back(trim(cur)); cur.clear(); }
-        else { cur.push_back(c); }
+static vector<string> parseArgs(const string& s){
+    vector<string> out; string cur;
+    int depth=0;
+    for(size_t i=0;i<s.size();++i){
+        char c=s[i];
+        if(c=='('||c=='['||c=='{'){ ++depth; cur.push_back(c); }
+        else if(c==')'||c==']'||c=='}'){ --depth; cur.push_back(c); }
+        else if(c==',' && depth==0){ out.push_back(trim(cur)); cur.clear(); }
+        else cur.push_back(c);
     }
-    if (!cur.empty()) out.push_back(trim(cur));
-    if (out.size() == 1 && out[0].empty()) out.clear(); // handle empty arg list
+    if(!cur.empty()) out.push_back(trim(cur));
+    if(out.size()==1 && out[0].empty()) out.clear();
     return out;
 }
 
-#include <regex>
+static vector<string> splitParamsCSV(const string& s){
+    vector<string> out; string cur;
+    for(char c: s){ if(c==','){ out.push_back(trim(cur)); cur.clear(); } else cur.push_back(c); }
+    if(!cur.empty()) out.push_back(trim(cur));
+    if(out.size()==1 && out[0].empty()) out.clear();
+    return out;
+}
 
-static string substituteParams(
-    const string& body,
-    const vector<string>& params,
-    const vector<string>& args
-) {
+static string substituteParams(const string& body,
+                               const vector<string>& params,
+                               const vector<string>& args){
     string res = body;
-    for (size_t i = 0; i < params.size(); ++i) {
+    for(size_t i=0;i<params.size();++i){
         const string& p = params[i];
         const string& a = args[i];
-        // \b doesn’t match inside identifiers; IDENTIFIERs are [A-Za-z_][A-Za-z0-9_]*
         regex re("\\b" + p + "\\b");
         res = regex_replace(res, re, a);
     }
     return res;
 }
 
+static string expandMacroCallCommon(const char* nameC, const char* argsStrC, bool expectExpression){
+    string name = nameC ? nameC : "";
+    string argsStr = argsStrC ? argsStrC : "";
 
+    auto it = macroTable.find(name);
+    if(it == macroTable.end()) throw runtime_error("Unknown macro: " + name);
 
-// Global table to store macro definitions
-int indent = 0;
-string indentation(int indent) {
-    string ind = "";
-    for (int i = 0; i < indent; i++) {
-        ind += "    ";
+    const Macro& macro = it->second;
+    if(expectExpression && !macro.isExpression)
+        throw runtime_error("Macro '" + name + "' is a statement macro");
+    if(!expectExpression && macro.isExpression)
+        throw runtime_error("Macro '" + name + "' is an expression macro");
+    vector<string> args = parseArgs(argsStr);
+    if(args.size() != macro.params.size()){
+        ostringstream oss;
+        oss << "Macro '" << name << "' expects "
+                               << macro.params.size() << " arg(s), got " << args.size();
+        throw runtime_error(oss.str());
     }
-    return ind;
+    return substituteParams(macro.body, macro.params, args);
 }
 
-
+void yyerror(const char *s){
+    fprintf(stderr, "Error: %s\n", s);
+}
+int yylex(void);
 %}
+
 
 %union {
    char* val;
 }
 
-%token CLASS PUBLIC STATIC VOID MAIN STRING EXTENDS RETURN NEW IMPORT JAVA UTIL FUNCTION APPLY ARROW
+%token CLASS PUBLIC STATIC VOID MAIN STRING EXTENDS RETURN NEW IMPORT JAVA UTIL APPLY ARROW FUNCTION
 %token EQ NEQ LEQ AND OR
 %token IF ELSE WHILE DO
 %token TRUE_ FALSE_ THIS LENGTH
@@ -87,8 +102,8 @@ string indentation(int indent) {
 %type<val> Statements Statement UnmatchedStatement Block ClassType
 %type<val> OptExprs OptParams ParamList ParamRests
 %type<val> FunctionType FunctionDecl
-%type<val> MacroDefinitions MacroDefinition MacroDefExpression MacroDefStatement
-%type<val> OptIdList IdList IdRests IdRest
+%type<val> MacroDefinitions MacroDefinition MacroDefExpression MacroDefStatement MethodDeclarations MethodDeclaration
+%type<val> OptIdList IdList IdRests IdRest ImportFunctionOpt Goal MainClass
 
 %token PRINT
 %token INT BOOLEAN
@@ -115,21 +130,38 @@ string indentation(int indent) {
 
 Goal
     : ImportFunctionOpt MacroDefinitions MainClass TypeDeclarations
+    {
+        string s = "";
+        s += string($1);
+        s += string($2);
+        s += string($3);
+        s += string($4);
+        cout << s;
+    }
     ;
-
 ImportFunctionOpt :
     IMPORT JAVA '.' UTIL '.' FUNCTION '.' FUNCTION ';'
+    {
+        $$ = strdup("import java.util.function.Function;\n");
+    }
     |
+    { $$ = strdup(""); }
     ;
 
 MacroDefinitions :
     MacroDefinition MacroDefinitions
-    |
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
+    |{ $$ = strdup(""); }
     ;
 
 TypeDeclarations :
     TypeDeclaration TypeDeclarations
-    |
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
+    |{ $$ = strdup(""); }
     ;
 
 MainClass
@@ -138,77 +170,134 @@ MainClass
       '}'
       '}'
       {
-        cout << "class " << $2 << " {" << endl;
-        cout << "    public static void main(String[] " << $12 << ") {" << endl;
-        cout << "        System.out.println(" << $17 << ");" << endl;
-        cout << "    }" << endl;
-        cout << "}" << endl;
-        free($2); free($12); free($17);
+        string s = "class " + string($2) + " {\n";
+        indent++;
+        s += indentation(indent) + "public static void main(String[] " + string($12) + ") {\n";
+        indent++;
+        s += indentation(indent) + "System.out.println(" + string($17) + ");\n";
+        indent--;
+        s += indentation(indent) + "}\n";
+        indent--;
+        s += "}\n";
+        $$ = strdup(s.c_str());
       }
     ;
 
 TypeDeclaration
-    : CLASS IDENTIFIER{cout<<"class "<<$2<<" {\n";indent++;} '{' VarDecls MethodDeclarations '}' {cout<<"}\n";indent--;}
-    
-    | CLASS IDENTIFIER EXTENDS IDENTIFIER{cout<<"class "<<$2<<" extends "<<$4<<"{\n";indent++;} '{' VarDecls MethodDeclarations '}'
+    : CLASS IDENTIFIER'{' VarDecls MethodDeclarations '}'
+    {
+        string s = "class " + string($2) + " {\n";
+        indent++;
+        s += string($4);
+        s += string($5);
+        indent--;
+        s += "}\n";
+        $$ = strdup(s.c_str());
+    }
+    | CLASS IDENTIFIER EXTENDS IDENTIFIER '{' VarDecls MethodDeclarations '}'
+    {
+        string s = "class " + string($2) + " extends " + string($4) + " {\n";
+        indent++;
+        s += string($6);
+        s += string($7);
+        indent--;
+        s += "}\n";
+        $$ = strdup(s.c_str());
+    }
     ;
-
-
 
 VarDecls :
     VarDecl VarDecls
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
     |{$$ = strdup("");}
     ;
 
 VarDecl :
     Type IDENTIFIER ';'
     {
-        cout<<indentation(indent)<<$1<<$2<<";\n";
+        string s = indentation(indent) + string($1) + " " + string($2) + ";\n";
+        $$ = strdup(s.c_str());
     }
     | FunctionDecl IDENTIFIER ';'
-    ; 
+    {
+        string s = indentation(indent) + string($1) + " " + string($2) + ";\n";
+        $$ = strdup(s.c_str());
+    }
+    ;
 
 FunctionDecl :
     FUNCTION '<' Type ',' Type '>'
+    {
+        string s = "Function<" + string($3) + ", " + string($5) + ">";
+        $$ = strdup(s.c_str());
+    }
     ;
 
 MethodDeclarations :
     MethodDeclaration MethodDeclarations
-    |
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
+    |{ $$ = strdup(""); }
     ;
 
 MethodDeclaration
-    : FunctionType IDENTIFIER{cout<<$2<<"(";} '(' OptParams ')'{cout<<"){\n";indent++;}'{'Statements {cout<<indentation(indent);}RETURN{cout<<"return ";} Expression ';'{cout<<$13<<" ;\n";indent--;cout<<indentation(indent)<<"}\n";indent--;} '}'
+    : FunctionType IDENTIFIER '(' OptParams ')' '{' {indent+= 2;} Statements RETURN Expression ';' '}'
+    {
+        indent-= 2;
+        string s = indentation(indent) + string($1) + string($2) + "(" + string($4) + ") {\n";
+        s += string($8);
+        s += indentation(indent + 2) + "return " + string($10) + ";\n";
+        s += indentation(indent + 1) + "}\n";
+        $$ = strdup(s.c_str());
+    }
     ;
 
 FunctionType :
     PUBLIC Type
-    {cout<<indentation(indent)<<"public"<<" "<<$2;}
+    {
+        string s = "    public " + string($2) + " ";
+        $$ = strdup(s.c_str());
+    }
     ;
-
 
 OptParams :
     ParamList
-    |
+    {
+        $$ = $1;
+    }
+    |{$$ = strdup("");}
     ;
 
 ParamList :
-    Type IDENTIFIER{cout<<$1<<$2;} ParamRests
+    Type IDENTIFIER ParamRests
+    {
+        string s = string($1) + " " + string($2) + string($3);
+        $$ = strdup(s.c_str());
+    }
     ;
 
 ParamRests :
-    ','{cout<<", ";} Type IDENTIFIER{cout<<$3<<" "<<$4;} ParamRests
-    | 
+    ',' Type IDENTIFIER ParamRests
+    {
+        string s = ", " + string($2) + " " + string($3) + string($4);
+        $$ = strdup(s.c_str());
+    }
+    | {$$ = strdup("");}
     ;
 
 Type
-    : INT '[' ']'{string s = "int[] "; $$ = strdup(s.c_str());}
-    | BOOLEAN{string s = "boolean "; $$ = strdup(s.c_str());}
-    | INT{string s = "int "; $$ = strdup(s.c_str());}
-    | ClassType{string s = string($1) + " "; $$ = strdup(s.c_str()); free($1);}
-    | '(' Type ARROW Type ')'
+    : INT '[' ']'{$$ = strdup("int[]");}
+    | BOOLEAN{$$ = strdup("boolean");}
+    | INT{$$ = strdup("int");}
+    | ClassType{$$ = $1;}
+    | '(' Type ARROW Type ')'{
+        string s = "(" + string($2) + " -> " + string($4) + ")";
+        $$ = strdup(s.c_str());
+    }
     ;
-
 
 ClassType
     : IDENTIFIER{ $$ = $1; }
@@ -216,62 +305,77 @@ ClassType
 
 Statements  :
     Statement Statements
-    |
+    {
+        $$ = strdup((string($1) + string($2)).c_str());
+    }
+    |{ $$ = strdup(""); }
     ;
 
 Statement
-    : MatchedStatement
-    | UnmatchedStatement
-    | VarDecl
+    : MatchedStatement{$$ = $1;}
+    | UnmatchedStatement{$$ = $1;}
+    | VarDecl{$$ = $1;}
     ;
 
-
 MatchedStatement
-    : IF'(' Expression ')' MatchedStatement ELSE MatchedStatement
+    : IF'(' Expression ')'{indent++;} MatchedStatement{indent--;} ELSE{indent++;} MatchedStatement{indent--;}
     {
-        cout<<indentation(indent)<<"if ("<<$3<<")\n";
-        indent++;
-        cout<<indentation(indent);
-        cout<<$5;
-        indent--;
-        cout<<indentation(indent);
-        cout<<"else\n";
-        indent++;
-        cout<<indentation(indent);
-        cout<<$7;
-        indent--;
+        string s = indentation(indent) + "if (" + string($3) + ")\n";
+        s += string($6);
+        s += indentation(indent) + "else\n";
+        s += string($10);
+        $$ = strdup(s.c_str());
     }
-    | WHILE '(' Expression ')' MatchedStatement
+    | WHILE '(' Expression ')'{indent++;} MatchedStatement{indent--;}
     {
-        cout<<"while ("<<$3<<") {\n"<<""<<"\n}\n";
+        string s = indentation(indent) + "while (" + string($3) + ")\n";
+        s += string($6);
+        $$ = strdup(s.c_str());
     }
     | PRINT'(' Expression ')' ';'
     {
-        cout<<"System.out.println("<<$3<<");\n";
+        string s = indentation(indent) + "System.out.println(" + string($3) + ");\n";
+        $$ = strdup(s.c_str());
     }
-    | Block
+    | Block{ $$ = $1; }
     | IDENTIFIER '=' Expression ';'
     {
-        string s = string($1) + " = " + string($3) + ";\n";
+        string s = indentation(indent) + string($1) + " = " + string($3) + ";\n";
         $$ = strdup(s.c_str());
-        cout<<indentation(indent)<<$$;
-        free($1); free($3);
     }
     | IDENTIFIER '[' Expression ']' '=' Expression ';'
     {
-        string s = string($1) + "[" + string($3) + "] = " + string($6) + ";\n";
+        string s = indentation(indent) + string($1) + "[" + string($3) + "] = " + string($6) + ";\n";
         $$ = strdup(s.c_str());
-        free($1); free($3); free($6);
     }
     ;
 
 Block :
-    '{' Statements '}'
+    '{' {indent++;} Statements '}'
+    {
+        indent--;
+        string s = indentation(indent) + "{\n";
+        s += string($3);
+        s += indentation(indent) + "}\n";
+        $$ = strdup(s.c_str());
+    }
     ;
 
 UnmatchedStatement
-    : IF '(' Expression ')' Statement %prec IFX
-    | IF '(' Expression ')' MatchedStatement ELSE UnmatchedStatement
+    : IF '(' Expression ')'{indent++;} Statement{indent--;} %prec IFX
+    {
+        string s = indentation(indent) + "if (" + string($3) + ")\n";
+        s += string($6);
+        $$ = strdup(s.c_str());
+    }
+    | IF '(' Expression ')'{indent++;} MatchedStatement{indent--;} ELSE{indent++;} UnmatchedStatement{indent--;}
+    {
+        string s = indentation(indent) + "if (" + string($3) + ")\n";
+        s += string($6);
+        s += indentation(indent) + "else\n";
+        s += string($10);
+        $$ = strdup(s.c_str());
+    }
     ;
 
 OptExprs
@@ -289,7 +393,6 @@ ExprList :
     {
         string s = string($1) + $2;
         $$ = strdup(s.c_str());
-        free($1);
     }
     ;
 
@@ -305,7 +408,6 @@ ExpressionRest :
     ',' Expression
     {
         $$ = strdup((string(", ") + string($2)).c_str());
-        free($2);
     }
     ;
 
@@ -316,87 +418,48 @@ Expression :
     | IDENTIFIER      { $$ = $1; }
     | THIS            { $$ = strdup("this"); }
     | Expression '.' LENGTH
-        { $$ = strdup((string($1) + ".length").c_str()); free($1); }
+        { $$ = strdup((string($1) + ".length").c_str()); }
     | Expression '.' IDENTIFIER '(' OptExprs ')'
-        { $$ = strdup((string($1) + "." + string($3) + "(" + string($5) + ")").c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + "." + string($3) + "(" + string($5) + ")").c_str());}
     | NEW INT '[' Expression ']'
-        { $$ = strdup(("new int[" + string($4) + "]").c_str()); free($4); }
+        { $$ = strdup(("new int[" + string($4) + "]").c_str()); }
     | NEW IDENTIFIER '(' ')'
-        { $$ = strdup(("new " + string($2) + "()").c_str()); free($2); }
+        { $$ = strdup(("new " + string($2) + "()").c_str()); }
     | Expression '[' Expression ']'
-        { $$ = strdup((string($1) + "[" + string($3) + "]").c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + "[" + string($3) + "]").c_str()); }
     | '!' Expression
-        { $$ = strdup(("!" + string($2)).c_str()); free($2); }
+        { $$ = strdup(("!" + string($2)).c_str()); }
     | Expression '*' Expression
-        { $$ = strdup((string($1) + " * " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " * " + string($3)).c_str());}
     | Expression '/' Expression
-        { $$ = strdup((string($1) + " / " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " / " + string($3)).c_str()); }
     | Expression '+' Expression
-        { $$ = strdup((string($1) + " + " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " + " + string($3)).c_str()); }
     | Expression '-' Expression
-        { $$ = strdup((string($1) + " - " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " - " + string($3)).c_str()); }
     | Expression LEQ Expression
-        { $$ = strdup((string($1) + " <= " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " <= " + string($3)).c_str()); }
     | Expression NEQ Expression
-        { $$ = strdup((string($1) + " != " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " != " + string($3)).c_str()); }
     | Expression AND Expression
-        { $$ = strdup((string($1) + " && " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " && " + string($3)).c_str()); }
     | Expression OR Expression
-        { $$ = strdup((string($1) + " || " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " || " + string($3)).c_str()); }
     | IDENTIFIER '(' OptExprs ')'
     {
-        string name($1 ? $1 : "");
-        string argsStr($3 ? $3 : "");
-
-        // 1) Look up macro
-        auto it = macroTable.find(name);
-        if (it == macroTable.end()) {
-            yyerror(("Unknown macro: " + name).c_str());
-            if ($1) free($1);
-            if ($3) free($3);
-            YYERROR; // or exit(1);
-        }
-        const Macro& macro = it->second;
-        if (!macro.isExpression) {
-            yyerror(("Macro is not an expression macro: " + name).c_str());
-            if ($1) free($1);
-            if ($3) free($3);
+        try {
+            $$ = strdup(expandMacroCallCommon($1, $3, true).c_str());
+        } catch (const runtime_error& e) {
+            yyerror(e.what());
             YYERROR;
         }
-
-        // 2) Parse args robustly
-        vector<string> args = parseArgs(argsStr);
-
-        // 3) Arity check
-        if (args.size() != macro.params.size()) {
-            ostringstream oss;
-            oss << "Macro '" << name << "' expects " << macro.params.size()
-                << " arg(s), got " << args.size();
-            yyerror(oss.str().c_str());
-            if ($1) free($1);
-            if ($3) free($3);
-            YYERROR;
-        }
-
-        // 4) Substitute with word-boundary safety
-        string expanded = substituteParams(macro.body, macro.params, args);
-
-        // (Optional) recursive expansion: if your spec allows macros inside macro bodies,
-        // you can feed 'expanded' back through a small expander loop before returning.
-
-        // 5) Set semantic value (as char*)
-        $$ = strdup(expanded.c_str());
-
-        if ($1) free($1);
-        if ($3) free($3);
-    }   
-
+    }
     | '(' Expression ')'
-        { $$ = strdup(("(" + string($2) + ")").c_str()); free($2); }
+        { $$ = strdup(("(" + string($2) + ")").c_str()); }
     | Expression ARROW Expression
-        { $$ = strdup((string($1) + " -> " + string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " -> " + string($3)).c_str());}
     | Expression '.' APPLY '(' Expression ')'
-        { $$ = strdup((string($1) + ".apply(" + string($5) + ")").c_str()); free($1); free($5); }
+        { $$ = strdup((string($1) + ".apply(" + string($5) + ")").c_str()); }
     ;
 
 MacroDefinition :
@@ -407,52 +470,58 @@ MacroDefinition :
 MacroDefExpression
     : DEFINE IDENTIFIER '(' OptIdList ')' '(' Expression ')'
     {
-        string name = string($2);
-        string paramsStr = string($4);
-        vector<string> params;
-        string temp = "";
-        if (paramsStr != "") {
-            for(int i=0;i<paramsStr.size();i++){
-                if(paramsStr[i]==','){
-                    params.push_back(temp);
-                    temp="";
-                }
-                else if(paramsStr[i]!=' '){
-                    temp+=paramsStr[i];
-                }
-            }
-            params.push_back(temp);
+        string name($2 ? $2 : "");
+        string paramsStr($4 ? $4 : "");
+        string body($7 ? $7 : "");
+        vector<string> params = splitParamsCSV(paramsStr);
+        set<string> paramSet(params.begin(), params.end());
+        if(paramSet.size() != params.size()){
+            yyerror("Duplicate parameter in macro definition");
+            YYERROR;
         }
-        string body = string($7);
 
         Macro macro;
         macro.isExpression = true;
         macro.params = params;
         macro.body = body;
-
         macroTable[name] = macro;
-
-        
-
-        
+        $$ = strdup("");
     }
     ;
 
 MacroDefStatement
     : DEFINE IDENTIFIER '(' OptIdList ')' '{' Statements '}'
+    {
+        string name($2 ? $2 : "");
+        string paramsStr($4 ? $4 : "");
+        string body($7 ? $7 : "");
+        vector<string> params = splitParamsCSV(paramsStr);
+        set<string> paramSet(params.begin(), params.end());
+        if(paramSet.size() != params.size()){
+            yyerror("Duplicate parameter in macro definition");
+            YYERROR;
+        }
+
+        Macro macro;
+        macro.isExpression = false;
+        macro.params = params;
+        macro.body = body;
+        macroTable[name] = macro;
+        $$ = strdup("");
+    }
     ;
 
 OptIdList :
-    IdList{$$ = $1; free($1);}
+    IdList{$$ = $1; }
     |{ $$ = strdup(""); }
     ;
 
 IdList :
-    IDENTIFIER IdRests{$$ = strdup((string($1) + string($2)).c_str()); free($2); free($1);}
+    IDENTIFIER IdRests{$$ = strdup((string($1) + string($2)).c_str()); }
     ;
 
 IdRests :
-    IdRest IdRests{$$ = strdup((string($1) + string($2)).c_str()); free($2);}
+    IdRest IdRests{$$ = strdup((string($1) + string($2)).c_str()); }
     |{ $$ = strdup(""); }
     ;
 
@@ -464,10 +533,6 @@ IdRest :
     ;
 
 %%
-
-void yyerror(const char *s) {
-    fprintf(stderr, "Syntax Error: %s\n", s);
-}
 
 int main(void) {
     return yyparse();

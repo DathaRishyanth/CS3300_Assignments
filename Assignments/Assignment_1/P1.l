@@ -43,7 +43,7 @@
 "import"                { return IMPORT; }
 "java"                 { return JAVA; }
 "util"                 { return UTIL; }
-"function"            { return FUNCTION; }
+"FUNCTION"          { return FUNCTION; }
 
 
 "->"                    { return ARROW; }
