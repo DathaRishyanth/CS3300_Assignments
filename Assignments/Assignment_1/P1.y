@@ -11,15 +11,54 @@ void yyerror(const char *s);
 int yylex(void);
 
 // Define the Macro class
-class Macro {
-public:
-    vector<string> params;
-    string body;
-    bool isExpression;
-
-    Macro() : isExpression(false) {}
-    Macro(const vector<string>& p, const string& b, bool isExpr) : params(p), body(b), isExpression(isExpr) {}
+struct Macro {
+    bool isExpression;               // true for expression macros
+    vector<string> params; // parameter names
+    string body;                // the macro body as text
 };
+map<string, Macro> macroTable;
+static inline string trim(const string& s){
+    size_t i=0, j=s.size();
+    while(i<j && isspace((unsigned char)s[i])) ++i;
+    while(j>i && isspace((unsigned char)s[j-1])) --j;
+    return s.substr(i, j-i);
+}
+
+static vector<string> parseArgs(const string& s) {
+    vector<string> out;
+    string cur;
+    int depth = 0;
+    for (size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if (c == '(' || c == '[' || c == '{') { depth++; cur.push_back(c); }
+        else if (c == ')' || c == ']' || c == '}') { depth--; cur.push_back(c); }
+        else if (c == ',' && depth == 0) { out.push_back(trim(cur)); cur.clear(); }
+        else { cur.push_back(c); }
+    }
+    if (!cur.empty()) out.push_back(trim(cur));
+    if (out.size() == 1 && out[0].empty()) out.clear(); // handle empty arg list
+    return out;
+}
+
+#include <regex>
+
+static string substituteParams(
+    const string& body,
+    const vector<string>& params,
+    const vector<string>& args
+) {
+    string res = body;
+    for (size_t i = 0; i < params.size(); ++i) {
+        const string& p = params[i];
+        const string& a = args[i];
+        // \b doesn’t match inside identifiers; IDENTIFIERs are [A-Za-z_][A-Za-z0-9_]*
+        regex re("\\b" + p + "\\b");
+        res = regex_replace(res, re, a);
+    }
+    return res;
+}
+
+
 
 // Global table to store macro definitions
 int indent = 0;
@@ -30,7 +69,7 @@ string indentation(int indent) {
     }
     return ind;
 }
-map<string, Macro> macroTable;
+
 
 %}
 
@@ -45,7 +84,7 @@ map<string, Macro> macroTable;
 
 %type<val> Expression MatchedStatement Type ExprList ExpressionRests ExpressionRest
 %type<val>  TypeDeclarations TypeDeclaration VarDecls VarDecl
-%type<val> Statements Statement UnmatchedStatement Block
+%type<val> Statements Statement UnmatchedStatement Block ClassType
 %type<val> OptExprs OptParams ParamList ParamRests
 %type<val> FunctionType FunctionDecl
 %type<val> MacroDefinitions MacroDefinition MacroDefExpression MacroDefStatement
@@ -118,7 +157,7 @@ TypeDeclaration
 
 VarDecls :
     VarDecl VarDecls
-    |
+    |{$$ = strdup("");}
     ;
 
 VarDecl :
@@ -166,13 +205,13 @@ Type
     : INT '[' ']'{string s = "int[] "; $$ = strdup(s.c_str());}
     | BOOLEAN{string s = "boolean "; $$ = strdup(s.c_str());}
     | INT{string s = "int "; $$ = strdup(s.c_str());}
-    | ClassType
+    | ClassType{string s = string($1) + " "; $$ = strdup(s.c_str()); free($1);}
     | '(' Type ARROW Type ')'
     ;
 
 
 ClassType
-    : IDENTIFIER
+    : IDENTIFIER{ $$ = $1; }
     ;
 
 Statements  :
@@ -215,6 +254,7 @@ MatchedStatement
     {
         string s = string($1) + " = " + string($3) + ";\n";
         $$ = strdup(s.c_str());
+        cout<<indentation(indent)<<$$;
         free($1); free($3);
     }
     | IDENTIFIER '[' Expression ']' '=' Expression ';'
@@ -276,41 +316,87 @@ Expression :
     | IDENTIFIER      { $$ = $1; }
     | THIS            { $$ = strdup("this"); }
     | Expression '.' LENGTH
-        { $$ = strdup((std::string($1) + ".length").c_str()); free($1); }
+        { $$ = strdup((string($1) + ".length").c_str()); free($1); }
     | Expression '.' IDENTIFIER '(' OptExprs ')'
-        { $$ = strdup((std::string($1) + "." + std::string($3) + "(" + string($5) + ")").c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + "." + string($3) + "(" + string($5) + ")").c_str()); free($1); free($3); }
     | NEW INT '[' Expression ']'
-        { $$ = strdup(("new int[" + std::string($4) + "]").c_str()); free($4); }
+        { $$ = strdup(("new int[" + string($4) + "]").c_str()); free($4); }
     | NEW IDENTIFIER '(' ')'
-        { $$ = strdup(("new " + std::string($2) + "()").c_str()); free($2); }
+        { $$ = strdup(("new " + string($2) + "()").c_str()); free($2); }
     | Expression '[' Expression ']'
-        { $$ = strdup((std::string($1) + "[" + std::string($3) + "]").c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + "[" + string($3) + "]").c_str()); free($1); free($3); }
     | '!' Expression
-        { $$ = strdup(("!" + std::string($2)).c_str()); free($2); }
+        { $$ = strdup(("!" + string($2)).c_str()); free($2); }
     | Expression '*' Expression
-        { $$ = strdup((std::string($1) + " * " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " * " + string($3)).c_str()); free($1); free($3); }
     | Expression '/' Expression
-        { $$ = strdup((std::string($1) + " / " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " / " + string($3)).c_str()); free($1); free($3); }
     | Expression '+' Expression
-        { $$ = strdup((std::string($1) + " + " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " + " + string($3)).c_str()); free($1); free($3); }
     | Expression '-' Expression
-        { $$ = strdup((std::string($1) + " - " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " - " + string($3)).c_str()); free($1); free($3); }
     | Expression LEQ Expression
-        { $$ = strdup((std::string($1) + " <= " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " <= " + string($3)).c_str()); free($1); free($3); }
     | Expression NEQ Expression
-        { $$ = strdup((std::string($1) + " != " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " != " + string($3)).c_str()); free($1); free($3); }
     | Expression AND Expression
-        { $$ = strdup((std::string($1) + " && " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " && " + string($3)).c_str()); free($1); free($3); }
     | Expression OR Expression
-        { $$ = strdup((std::string($1) + " || " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " || " + string($3)).c_str()); free($1); free($3); }
     | IDENTIFIER '(' OptExprs ')'
-        { $$ = strdup((std::string($1) + "()").c_str()); free($1); }
+    {
+        string name($1 ? $1 : "");
+        string argsStr($3 ? $3 : "");
+
+        // 1) Look up macro
+        auto it = macroTable.find(name);
+        if (it == macroTable.end()) {
+            yyerror(("Unknown macro: " + name).c_str());
+            if ($1) free($1);
+            if ($3) free($3);
+            YYERROR; // or exit(1);
+        }
+        const Macro& macro = it->second;
+        if (!macro.isExpression) {
+            yyerror(("Macro is not an expression macro: " + name).c_str());
+            if ($1) free($1);
+            if ($3) free($3);
+            YYERROR;
+        }
+
+        // 2) Parse args robustly
+        vector<string> args = parseArgs(argsStr);
+
+        // 3) Arity check
+        if (args.size() != macro.params.size()) {
+            ostringstream oss;
+            oss << "Macro '" << name << "' expects " << macro.params.size()
+                << " arg(s), got " << args.size();
+            yyerror(oss.str().c_str());
+            if ($1) free($1);
+            if ($3) free($3);
+            YYERROR;
+        }
+
+        // 4) Substitute with word-boundary safety
+        string expanded = substituteParams(macro.body, macro.params, args);
+
+        // (Optional) recursive expansion: if your spec allows macros inside macro bodies,
+        // you can feed 'expanded' back through a small expander loop before returning.
+
+        // 5) Set semantic value (as char*)
+        $$ = strdup(expanded.c_str());
+
+        if ($1) free($1);
+        if ($3) free($3);
+    }   
+
     | '(' Expression ')'
-        { $$ = strdup(("(" + std::string($2) + ")").c_str()); free($2); }
+        { $$ = strdup(("(" + string($2) + ")").c_str()); free($2); }
     | Expression ARROW Expression
-        { $$ = strdup((std::string($1) + " -> " + std::string($3)).c_str()); free($1); free($3); }
+        { $$ = strdup((string($1) + " -> " + string($3)).c_str()); free($1); free($3); }
     | Expression '.' APPLY '(' Expression ')'
-        { $$ = strdup((std::string($1) + ".apply(" + std::string($5) + ")").c_str()); free($1); free($5); }
+        { $$ = strdup((string($1) + ".apply(" + string($5) + ")").c_str()); free($1); free($5); }
     ;
 
 MacroDefinition :
@@ -320,6 +406,36 @@ MacroDefinition :
 
 MacroDefExpression
     : DEFINE IDENTIFIER '(' OptIdList ')' '(' Expression ')'
+    {
+        string name = string($2);
+        string paramsStr = string($4);
+        vector<string> params;
+        string temp = "";
+        if (paramsStr != "") {
+            for(int i=0;i<paramsStr.size();i++){
+                if(paramsStr[i]==','){
+                    params.push_back(temp);
+                    temp="";
+                }
+                else if(paramsStr[i]!=' '){
+                    temp+=paramsStr[i];
+                }
+            }
+            params.push_back(temp);
+        }
+        string body = string($7);
+
+        Macro macro;
+        macro.isExpression = true;
+        macro.params = params;
+        macro.body = body;
+
+        macroTable[name] = macro;
+
+        
+
+        
+    }
     ;
 
 MacroDefStatement
@@ -327,21 +443,24 @@ MacroDefStatement
     ;
 
 OptIdList :
-    IdList
-    |
+    IdList{$$ = $1; free($1);}
+    |{ $$ = strdup(""); }
     ;
 
 IdList :
-    IDENTIFIER IdRests
+    IDENTIFIER IdRests{$$ = strdup((string($1) + string($2)).c_str()); free($2); free($1);}
     ;
 
 IdRests :
-    IdRest IdRests
-    |
+    IdRest IdRests{$$ = strdup((string($1) + string($2)).c_str()); free($2);}
+    |{ $$ = strdup(""); }
     ;
 
 IdRest :
     ',' IDENTIFIER
+    {
+        $$ = strdup((string(", ") + string($2)).c_str());
+    }
     ;
 
 %%
