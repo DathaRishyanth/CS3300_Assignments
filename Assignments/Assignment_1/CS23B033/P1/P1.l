@@ -1,5 +1,5 @@
 %{
-    #include "y.tab.h"
+    #include "P1.tab.h"
     #include <bits/stdc++.h>
     using namespace std;
     void yyerror(char *);
@@ -8,8 +8,11 @@
 
 %%
 
-"//".*                { yylval.val = strdup(yytext); return COMMENT; }
-"/*"([^*]|\*[^/])*"*/"    { yylval.val = strdup(yytext); return COMMENT; }
+"//".*                { //yylval.val = strdup(yytext); return COMMENT; 
+}
+
+"/*"([^*]|\*[^/])*"*/"    { //yylval.val = strdup(yytext); return COMMENT; 
+}
 
 
 "class"                 { return CLASS; }
@@ -43,7 +46,8 @@
 "import"                { return IMPORT; }
 "java"                 { return JAVA; }
 "util"                 { return UTIL; }
-"FUNCTION"          { return FUNCTION; }
+"function"            { return FUNCTION_; }
+"Function"         { return FUNCTION; }
 
 
 "->"                    { return ARROW; }
@@ -58,6 +62,7 @@
 ","                     { return ','; }
 "="                     { return '='; }
 "!"                     { return '!'; }
+">"                     { return '>'; }
 "<"                     { return '<'; }
 "+"                     { return '+'; }
 "-"                     { return '-'; }

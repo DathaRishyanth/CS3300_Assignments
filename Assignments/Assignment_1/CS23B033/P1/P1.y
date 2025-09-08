@@ -6,7 +6,7 @@
 using namespace std;
 
 void yyerror(const char *s){
-    printf("//Failed to parse macrojava code.");
+    printf("// Failed to parse macrojava code.");
     exit(1);
 }
 struct Macro {

@@ -35,8 +35,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY_YY_Y_TAB_H_INCLUDED
-# define YY_YY_Y_TAB_H_INCLUDED
+#ifndef YY_YY_P1_TAB_H_INCLUDED
+# define YY_YY_P1_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -67,83 +67,43 @@ extern int yydebug;
     JAVA = 268,                    /* JAVA  */
     UTIL = 269,                    /* UTIL  */
     APPLY = 270,                   /* APPLY  */
-    ARROW = 271,                   /* ARROW  */
-    FUNCTION = 272,                /* FUNCTION  */
-    EQ = 273,                      /* EQ  */
-    NEQ = 274,                     /* NEQ  */
-    LEQ = 275,                     /* LEQ  */
-    AND = 276,                     /* AND  */
-    OR = 277,                      /* OR  */
-    IF = 278,                      /* IF  */
-    ELSE = 279,                    /* ELSE  */
-    WHILE = 280,                   /* WHILE  */
-    DO = 281,                      /* DO  */
-    TRUE_ = 282,                   /* TRUE_  */
-    FALSE_ = 283,                  /* FALSE_  */
-    THIS = 284,                    /* THIS  */
-    LENGTH = 285,                  /* LENGTH  */
-    PRINT = 286,                   /* PRINT  */
-    INT = 287,                     /* INT  */
-    BOOLEAN = 288,                 /* BOOLEAN  */
-    IFX = 289,                     /* IFX  */
-    DEFINE = 290,                  /* DEFINE  */
-    UMINUS = 291,                  /* UMINUS  */
-    IDENTIFIER = 292,              /* IDENTIFIER  */
-    INTEGER_LITERAL = 293          /* INTEGER_LITERAL  */
+    FUNCTION = 271,                /* FUNCTION  */
+    FUNCTION_ = 272,               /* FUNCTION_  */
+    ARROW = 273,                   /* ARROW  */
+    EQ = 274,                      /* EQ  */
+    NEQ = 275,                     /* NEQ  */
+    LEQ = 276,                     /* LEQ  */
+    AND = 277,                     /* AND  */
+    OR = 278,                      /* OR  */
+    IF = 279,                      /* IF  */
+    ELSE = 280,                    /* ELSE  */
+    WHILE = 281,                   /* WHILE  */
+    DO = 282,                      /* DO  */
+    TRUE_ = 283,                   /* TRUE_  */
+    FALSE_ = 284,                  /* FALSE_  */
+    THIS = 285,                    /* THIS  */
+    LENGTH = 286,                  /* LENGTH  */
+    PRINT = 287,                   /* PRINT  */
+    INT = 288,                     /* INT  */
+    BOOLEAN = 289,                 /* BOOLEAN  */
+    IFX = 290,                     /* IFX  */
+    DEFINE = 291,                  /* DEFINE  */
+    UMINUS = 292,                  /* UMINUS  */
+    IDENTIFIER = 293,              /* IDENTIFIER  */
+    INTEGER_LITERAL = 294          /* INTEGER_LITERAL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
-/* Token kinds.  */
-#define YYEMPTY -2
-#define YYEOF 0
-#define YYerror 256
-#define YYUNDEF 257
-#define CLASS 258
-#define PUBLIC 259
-#define STATIC 260
-#define VOID 261
-#define MAIN 262
-#define STRING 263
-#define EXTENDS 264
-#define RETURN 265
-#define NEW 266
-#define IMPORT 267
-#define JAVA 268
-#define UTIL 269
-#define APPLY 270
-#define ARROW 271
-#define FUNCTION 272
-#define EQ 273
-#define NEQ 274
-#define LEQ 275
-#define AND 276
-#define OR 277
-#define IF 278
-#define ELSE 279
-#define WHILE 280
-#define DO 281
-#define TRUE_ 282
-#define FALSE_ 283
-#define THIS 284
-#define LENGTH 285
-#define PRINT 286
-#define INT 287
-#define BOOLEAN 288
-#define IFX 289
-#define DEFINE 290
-#define UMINUS 291
-#define IDENTIFIER 292
-#define INTEGER_LITERAL 293
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 91 "P1.y"
+#line 116 "P1.y"
 
    char* val;
 
-#line 147 "y.tab.h"
+#line 107 "P1.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -158,4 +118,4 @@ extern YYSTYPE yylval;
 int yyparse (void);
 
 
-#endif /* !YY_YY_Y_TAB_H_INCLUDED  */
+#endif /* !YY_YY_P1_TAB_H_INCLUDED  */

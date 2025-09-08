@@ -14,15 +14,15 @@ if [ -z "$INPUT_FILE" ]; then
 fi
 
 echo "Step 1: Running Bison on P1.y..."
-bison -dy P1.y
+bison -d P1.y
 
 echo "Step 2: Running Flex on P1.l..."
 flex P1.l
 
 echo "Step 3: Compiling with g++..."
-g++ y.tab.c lex.yy.c -o parser
+g++ P1.tab.c lex.yy.c -o parser
 
 echo "Step 4: Running parser on $INPUT_FILE..."
-./parser < "$INPUT_FILE" > test.java
+./parser < "$INPUT_FILE"
 
 echo "Done."
