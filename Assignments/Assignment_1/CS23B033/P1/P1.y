@@ -9,13 +9,14 @@ void yyerror(const char *s){
     printf("// Failed to parse macrojava code.");
     exit(1);
 }
+
+static int lambdaCounter = 0;
+string final_ouput = "";
 struct Macro {
     bool isExpression;
     vector<string> params;
     string body;
 };
-
-static int lambdaCounter = 0;
 map<string, Macro> macroTable;
 int indent = 0;
 string indentation(int level) {
@@ -165,7 +166,8 @@ Goal
         s += string($2);
         s += string($3);
         s += string($4);
-        cout << s;
+        final_ouput = s;
+        cout << final_ouput;
     }
     ;
 ImportFunctionOpt :
@@ -510,16 +512,15 @@ Expression :
         { $$ = strdup(("(" + string($2) + ")").c_str()); }
     | Expression ARROW Expression
     {
+        string new_var = "__lambda_var_" + to_string(lambdaCounter++) + "__";
         string old_var_with_parens = string($1);
-        string old_var_without_parens = old_var_with_parens.substr(1, old_var_with_parens.size() - 2);
-        string new_var = "__lambda_param_" + to_string(lambdaCounter++) + "__";
+        string old_var = old_var_with_parens.substr(1, old_var_with_parens.size() - 2);
         string body = string($3);
-        regex re("\\b" + old_var_without_parens + "\\b");
+        regex re("\\b" + old_var + "\\b");
         body = regex_replace(body, re, new_var);
         string s = "((" + new_var + ") -> " + body + ")";
         $$ = strdup(s.c_str());
         
-
     }
     | Expression '.' APPLY '(' Expression ')'
         { $$ = strdup((string($1) + ".apply(" + string($5) + ")").c_str()); }
