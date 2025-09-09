@@ -22,7 +22,7 @@ string indentation(int level) {
     return string(level * 4, ' ');
 }
 
-static inline string trim(const string& s){
+static inline string trim_parameters(const string& s){
     size_t i=0, j=s.size();
     while(i<j && isspace((unsigned char)s[i])) ++i;
     while(j>i && isspace((unsigned char)s[j-1])) --j;
@@ -36,18 +36,18 @@ static vector<string> parse_arguments(const string& s){
         char c=s[i];
         if(c=='('||c=='['||c=='{'){ ++depth; cur.push_back(c); }
         else if(c==')'||c==']'||c=='}'){ --depth; cur.push_back(c); }
-        else if(c==',' && depth==0){ out.push_back(trim(cur)); cur.clear(); }
+        else if(c==',' && depth==0){ out.push_back(trim_parameters(cur)); cur.clear(); }
         else cur.push_back(c);
     }
-    if(!cur.empty()) out.push_back(trim(cur));
+    if(!cur.empty()) out.push_back(trim_parameters(cur));
     if(out.size()==1 && out[0].empty()) out.clear();
     return out;
 }
 
 static vector<string> split_parameters(const string& s){
     vector<string> out; string cur;
-    for(char c: s){ if(c==','){ out.push_back(trim(cur)); cur.clear(); } else cur.push_back(c); }
-    if(!cur.empty()) out.push_back(trim(cur));
+    for(char c: s){ if(c==','){ out.push_back(trim_parameters(cur)); cur.clear(); } else cur.push_back(c); }
+    if(!cur.empty()) out.push_back(trim_parameters(cur));
     if(out.size()==1 && out[0].empty()) out.clear();
     return out;
 }
@@ -66,13 +66,13 @@ static string substitute_arguments(const string& body,
 
     for (size_t i = 0; i < placeholders.size(); ++i) {
         regex re(placeholders[i]);
-        string wrapped = "";
+        string replaced_var = "";
 
         if(regex_match(args[i], regex("^[a-zA-Z_][a-zA-Z0-9_]*$")))
-            wrapped = args[i];
+            replaced_var = args[i];
         else
-            wrapped += '(' + args[i] + ')';
-        res = regex_replace(res, re, wrapped);
+            replaced_var += '(' + args[i] + ')';
+        res = regex_replace(res, re, replaced_var);
     }
 
     return res;
@@ -92,8 +92,8 @@ static string reindent_to(const string& s, int level){
 }
 
 static string expand_macro(const char* nameC, const char* argsStrC, bool expectExpression){
-    string name = nameC ? nameC : "";
-    string argsStr = argsStrC ? argsStrC : "";
+    string name = nameC;
+    string argsStr = argsStrC;
 
     auto it = macroTable.find(name);
     if(it == macroTable.end())
@@ -368,7 +368,7 @@ MatchedStatement
           $$ = strdup(s.c_str());
           free($3); free($5);
       }
-    | /* All other non-if, non-dangling statements go here */
+    | 
       PRINT'(' Expression ')' ';'
       {
           string s = indentation(indent) + "System.out.println(" + string($3) + ");\n";
